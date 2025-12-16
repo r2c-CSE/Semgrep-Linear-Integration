@@ -117,8 +117,24 @@ def webhook():
         if not payload:
             return jsonify({"error": "Empty payload"}), 400
         
-        event_type = payload.get("type", "unknown")
         results = []
+        
+        # Log the payload structure for debugging
+        logger.info(f"Received webhook payload type: {type(payload).__name__}")
+        
+        # Handle array of findings (Semgrep sends findings as a list)
+        if isinstance(payload, list):
+            logger.info(f"Processing {len(payload)} findings from array payload")
+            for finding in payload:
+                result = webhook_handler.process_finding(finding)
+                results.append(result)
+            return jsonify({
+                "status": "success",
+                "processed": len(results),
+                "results": results
+            })
+        
+        event_type = payload.get("type", "unknown")
         
         if event_type == "semgrep_finding":
             # Single finding event
