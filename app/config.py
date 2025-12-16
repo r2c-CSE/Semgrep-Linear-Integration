@@ -19,11 +19,18 @@ class Config:
     PORT: int = 8080
     DEBUG: bool = False
     
+    # Ngrok Configuration
+    NGROK_AUTHTOKEN: str = ""
+    LOCAL_DEV: bool = False
+    
     # Severity to Priority Mapping (Semgrep severity -> Linear priority 1-4)
     SEVERITY_PRIORITY_MAP: dict = field(default_factory=dict)
     
     def __post_init__(self):
-        # Load from environment variables
+        self.reload()
+    
+    def reload(self):
+        """Reload configuration from environment variables."""
         self.LINEAR_API_KEY = os.getenv("LINEAR_API_KEY", "")
         self.LINEAR_TEAM_ID = os.getenv("LINEAR_TEAM_ID", "")
         self.LINEAR_PROJECT_ID = os.getenv("LINEAR_PROJECT_ID", "")
@@ -31,6 +38,8 @@ class Config:
         self.SEMGREP_WEBHOOK_SECRET = os.getenv("SEMGREP_WEBHOOK_SECRET", "")
         self.PORT = int(os.getenv("PORT", "8080"))
         self.DEBUG = os.getenv("DEBUG", "false").lower() == "true"
+        self.NGROK_AUTHTOKEN = os.getenv("NGROK_AUTHTOKEN", "")
+        self.LOCAL_DEV = os.getenv("LOCAL_DEV", "false").lower() == "true"
         
         self.SEVERITY_PRIORITY_MAP = {
             "critical": 1,  # Urgent
@@ -50,5 +59,6 @@ class Config:
         return errors
 
 
+# Singleton config instance
 config = Config()
 

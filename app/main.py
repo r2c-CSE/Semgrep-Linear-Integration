@@ -1,7 +1,7 @@
 import os
 import logging
 from flask import Flask, request, jsonify, render_template, redirect
-from .config import config, Config
+from .config import config
 from .linear_client import LinearClient
 from .webhook_handler import WebhookHandler
 from . import tunnel
@@ -35,9 +35,10 @@ def is_configured():
 
 def reinitialize_clients():
     """Reinitialize clients after configuration changes."""
-    global linear_client, webhook_handler, config
-    # Reload config from environment
-    config = Config()
+    global linear_client, webhook_handler
+    # Reload config from environment (uses singleton)
+    config.reload()
+    logger.info(f"Config reloaded: LINEAR_API_KEY={'set' if config.LINEAR_API_KEY else 'empty'}, LINEAR_TEAM_ID={config.LINEAR_TEAM_ID}")
     linear_client = LinearClient(config.LINEAR_API_KEY) if config.LINEAR_API_KEY else None
     webhook_handler = WebhookHandler(linear_client) if linear_client else None
 
@@ -131,10 +132,15 @@ def webhook():
                 # Semgrep wraps each finding in a 'semgrep_finding' key
                 if isinstance(item, dict) and 'semgrep_finding' in item:
                     finding = item['semgrep_finding']
+                    result = webhook_handler.process_finding(finding)
+                    results.append(result)
+                elif isinstance(item, dict) and ('text' in item or 'username' in item):
+                    # Skip Slack-format notifications
+                    logger.info("Skipping Slack-format notification in array")
+                    continue
                 else:
-                    finding = item
-                result = webhook_handler.process_finding(finding)
-                results.append(result)
+                    result = webhook_handler.process_finding(item)
+                    results.append(result)
             return jsonify({
                 "status": "success",
                 "processed": len(results),
@@ -180,6 +186,22 @@ def webhook():
                 # Try to process data as a single finding
                 result = webhook_handler.process_finding(data)
                 results.append(result)
+        
+        elif "semgrep_scan" in payload:
+            # Handle semgrep_scan event (scan metadata, no findings to process)
+            scan_data = payload.get("semgrep_scan", {})
+            logger.info(f"Received scan event: {scan_data.get('hashed_id', 'unknown')}")
+            return jsonify({
+                "status": "success",
+                "message": "Scan event received",
+                "scan_id": scan_data.get("hashed_id")
+            })
+        
+        elif "semgrep_finding" in payload:
+            # Single finding wrapped in semgrep_finding
+            finding = payload.get("semgrep_finding", {})
+            result = webhook_handler.process_finding(finding)
+            results.append(result)
         
         else:
             # Try to process as a finding directly
