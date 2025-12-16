@@ -16,16 +16,13 @@
             --accent-red: #f85149;
             --accent-orange: #d29922;
             --accent-purple: #a371f7;
+            --accent-cyan: #56d4dd;
             --text-primary: #c9d1d9;
             --text-secondary: #8b949e;
             --border-color: #30363d;
         }
         
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
         
         body {
             font-family: 'Outfit', sans-serif;
@@ -37,213 +34,96 @@
                 radial-gradient(ellipse at bottom right, rgba(163, 113, 247, 0.08) 0%, transparent 50%);
         }
         
-        .container {
-            max-width: 900px;
-            margin: 0 auto;
-            padding: 3rem 2rem;
-        }
+        .container { max-width: 900px; margin: 0 auto; padding: 3rem 2rem; }
         
-        header {
-            text-align: center;
-            margin-bottom: 3rem;
-        }
+        header { text-align: center; margin-bottom: 3rem; }
         
-        .logo-container {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 1rem;
-            margin-bottom: 1rem;
-        }
-        
-        .logo {
-            font-size: 2.5rem;
-        }
+        .logo-container { display: flex; align-items: center; justify-content: center; gap: 1rem; margin-bottom: 1rem; }
+        .logo { font-size: 2.5rem; }
         
         h1 {
-            font-size: 2rem;
-            font-weight: 700;
+            font-size: 2rem; font-weight: 700;
             background: linear-gradient(135deg, var(--accent-primary), var(--accent-purple));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
         }
         
-        .subtitle {
-            color: var(--text-secondary);
-            margin-top: 0.5rem;
-            font-size: 1.1rem;
-        }
+        .subtitle { color: var(--text-secondary); margin-top: 0.5rem; font-size: 1.1rem; }
         
         .card {
-            background: var(--bg-secondary);
-            border: 1px solid var(--border-color);
-            border-radius: 12px;
-            padding: 1.5rem;
-            margin-bottom: 1.5rem;
+            background: var(--bg-secondary); border: 1px solid var(--border-color);
+            border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem;
         }
         
-        .card-header {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            margin-bottom: 1rem;
-        }
-        
-        .card-header h2 {
-            font-size: 1.25rem;
-            font-weight: 600;
-        }
+        .card-header { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1rem; }
+        .card-header h2 { font-size: 1.25rem; font-weight: 600; }
         
         .status-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-            padding: 0.35rem 0.75rem;
-            border-radius: 20px;
-            font-size: 0.85rem;
-            font-weight: 500;
+            display: inline-flex; align-items: center; gap: 0.5rem;
+            padding: 0.35rem 0.75rem; border-radius: 20px; font-size: 0.85rem; font-weight: 500;
         }
+        .status-badge.success { background: rgba(63, 185, 80, 0.15); color: var(--accent-green); border: 1px solid rgba(63, 185, 80, 0.3); }
+        .status-badge.error { background: rgba(248, 81, 73, 0.15); color: var(--accent-red); border: 1px solid rgba(248, 81, 73, 0.3); }
+        .status-badge.warning { background: rgba(210, 153, 34, 0.15); color: var(--accent-orange); border: 1px solid rgba(210, 153, 34, 0.3); }
+        .status-badge.info { background: rgba(86, 212, 221, 0.15); color: var(--accent-cyan); border: 1px solid rgba(86, 212, 221, 0.3); }
         
-        .status-badge.success {
-            background: rgba(63, 185, 80, 0.15);
-            color: var(--accent-green);
-            border: 1px solid rgba(63, 185, 80, 0.3);
-        }
-        
-        .status-badge.error {
-            background: rgba(248, 81, 73, 0.15);
-            color: var(--accent-red);
-            border: 1px solid rgba(248, 81, 73, 0.3);
-        }
-        
-        .status-badge.warning {
-            background: rgba(210, 153, 34, 0.15);
-            color: var(--accent-orange);
-            border: 1px solid rgba(210, 153, 34, 0.3);
-        }
-        
-        .config-grid {
-            display: grid;
-            gap: 0.75rem;
-        }
+        .config-grid { display: grid; gap: 0.75rem; }
         
         .config-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 0.75rem 1rem;
-            background: var(--bg-tertiary);
-            border-radius: 8px;
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.9rem;
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 0.75rem 1rem; background: var(--bg-tertiary); border-radius: 8px;
+            font-family: 'JetBrains Mono', monospace; font-size: 0.9rem;
         }
+        .config-item .label { color: var(--text-secondary); }
+        .config-item .value { color: var(--accent-primary); }
+        .config-item .value.masked { color: var(--text-secondary); }
         
-        .config-item .label {
-            color: var(--text-secondary);
-        }
-        
-        .config-item .value {
-            color: var(--accent-primary);
-        }
-        
-        .config-item .value.masked {
-            color: var(--text-secondary);
-        }
-        
-        .teams-list {
-            list-style: none;
-        }
-        
+        .teams-list { list-style: none; }
         .teams-list li {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            padding: 0.75rem 1rem;
-            background: var(--bg-tertiary);
-            border-radius: 8px;
-            margin-bottom: 0.5rem;
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.9rem;
+            display: flex; align-items: center; gap: 0.75rem;
+            padding: 0.75rem 1rem; background: var(--bg-tertiary); border-radius: 8px;
+            margin-bottom: 0.5rem; font-family: 'JetBrains Mono', monospace; font-size: 0.9rem;
         }
+        .team-key { background: var(--bg-primary); padding: 0.25rem 0.5rem; border-radius: 4px; color: var(--accent-purple); font-size: 0.8rem; }
+        .team-id { color: var(--text-secondary); font-size: 0.8rem; margin-left: auto; }
         
-        .team-key {
-            background: var(--bg-primary);
-            padding: 0.25rem 0.5rem;
-            border-radius: 4px;
-            color: var(--accent-purple);
-            font-size: 0.8rem;
-        }
+        .endpoint-box { background: var(--bg-tertiary); border-radius: 8px; padding: 1rem; font-family: 'JetBrains Mono', monospace; margin-bottom: 1rem; }
+        .endpoint-box code { color: var(--accent-green); word-break: break-all; }
+        .endpoint-box.highlight { border: 1px solid var(--accent-cyan); background: rgba(86, 212, 221, 0.05); }
+        .endpoint-box .copy-hint { font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.5rem; }
         
-        .team-id {
-            color: var(--text-secondary);
-            font-size: 0.8rem;
-            margin-left: auto;
-        }
-        
-        .endpoint-box {
-            background: var(--bg-tertiary);
-            border-radius: 8px;
-            padding: 1rem;
-            font-family: 'JetBrains Mono', monospace;
-        }
-        
-        .endpoint-box code {
-            color: var(--accent-green);
-            word-break: break-all;
-        }
-        
-        .error-list {
-            list-style: none;
-        }
-        
+        .error-list { list-style: none; }
         .error-list li {
-            padding: 0.75rem 1rem;
-            background: rgba(248, 81, 73, 0.1);
-            border-left: 3px solid var(--accent-red);
-            border-radius: 0 8px 8px 0;
-            margin-bottom: 0.5rem;
-            color: var(--accent-red);
+            padding: 0.75rem 1rem; background: rgba(248, 81, 73, 0.1);
+            border-left: 3px solid var(--accent-red); border-radius: 0 8px 8px 0;
+            margin-bottom: 0.5rem; color: var(--accent-red);
         }
         
-        .instructions {
-            color: var(--text-secondary);
-            line-height: 1.8;
-        }
-        
-        .instructions ol {
-            padding-left: 1.5rem;
-            margin-top: 1rem;
-        }
-        
-        .instructions li {
-            margin-bottom: 0.5rem;
-        }
-        
+        .instructions { color: var(--text-secondary); line-height: 1.8; }
+        .instructions ol { padding-left: 1.5rem; margin-top: 1rem; }
+        .instructions li { margin-bottom: 0.5rem; }
         .instructions code {
-            background: var(--bg-tertiary);
-            padding: 0.15rem 0.4rem;
-            border-radius: 4px;
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.85rem;
-            color: var(--accent-primary);
+            background: var(--bg-tertiary); padding: 0.15rem 0.4rem; border-radius: 4px;
+            font-family: 'JetBrains Mono', monospace; font-size: 0.85rem; color: var(--accent-primary);
         }
         
-        footer {
-            text-align: center;
-            margin-top: 3rem;
-            color: var(--text-secondary);
-            font-size: 0.9rem;
+        .tunnel-info {
+            display: flex; align-items: center; gap: 0.5rem; padding: 0.75rem 1rem;
+            background: rgba(86, 212, 221, 0.1); border: 1px solid rgba(86, 212, 221, 0.3);
+            border-radius: 8px; margin-bottom: 1rem;
         }
+        .tunnel-info .icon { font-size: 1.2rem; }
+        .tunnel-info .text { color: var(--accent-cyan); font-size: 0.9rem; }
         
-        footer a {
-            color: var(--accent-primary);
-            text-decoration: none;
-        }
+        footer { text-align: center; margin-top: 3rem; color: var(--text-secondary); font-size: 0.9rem; }
+        footer a { color: var(--accent-primary); text-decoration: none; }
+        footer a:hover { text-decoration: underline; }
         
-        footer a:hover {
-            text-decoration: underline;
+        .copy-btn {
+            background: var(--accent-primary); color: white; border: none;
+            padding: 0.4rem 0.8rem; border-radius: 6px; cursor: pointer;
+            font-size: 0.8rem; font-weight: 500; margin-left: 0.5rem;
         }
+        .copy-btn:hover { opacity: 0.9; }
     </style>
 </head>
 <body>
@@ -279,6 +159,24 @@
             {% endif %}
         </div>
         
+        {% if tunnel_active %}
+        <div class="card">
+            <div class="card-header">
+                <h2>🚇 Local Development Tunnel</h2>
+                <span class="status-badge info">● Active</span>
+            </div>
+            <div class="tunnel-info">
+                <span class="icon">✨</span>
+                <span class="text">ngrok tunnel is running - your local server is publicly accessible!</span>
+            </div>
+            <div class="endpoint-box highlight">
+                <code id="webhook-url">{{ webhook_url }}</code>
+                <button class="copy-btn" onclick="copyToClipboard()">Copy</button>
+                <div class="copy-hint">👆 Use this URL in Semgrep webhook configuration</div>
+            </div>
+        </div>
+        {% endif %}
+        
         <div class="card">
             <div class="card-header">
                 <h2>⚙️ Configuration</h2>
@@ -311,14 +209,16 @@
             <div class="card-header">
                 <h2>🎯 Webhook Endpoint</h2>
             </div>
+            {% if not tunnel_active %}
             <div class="endpoint-box">
-                <code>POST /webhook</code>
+                <code>{{ webhook_url or "POST /webhook" }}</code>
             </div>
+            {% endif %}
             <div class="instructions">
                 <ol>
                     <li>In Semgrep AppSec Platform, go to <strong>Settings → Integrations → Add</strong></li>
-                    <li>Select <strong>Webhook</strong> and enter your server URL + <code>/webhook</code></li>
-                    <li>Optionally set a Signature Secret and configure <code>SEMGREP_WEBHOOK_SECRET</code></li>
+                    <li>Select <strong>Webhook</strong> and enter: <code>{{ webhook_url }}</code></li>
+                    <li>Set a Signature Secret matching your <code>SEMGREP_WEBHOOK_SECRET</code></li>
                     <li>Enable the webhook and configure which rule modes trigger notifications</li>
                 </ol>
             </div>
@@ -343,10 +243,21 @@
         
         <footer>
             Built for security teams • 
+            <a href="/setup">Setup Wizard</a> • 
             <a href="/health">Health Check</a> • 
-            <a href="/api/teams">API: Teams</a>
+            <a href="/api/tunnel/status">Tunnel Status</a>
         </footer>
     </div>
+    
+    <script>
+        function copyToClipboard() {
+            const url = document.getElementById('webhook-url').textContent;
+            navigator.clipboard.writeText(url).then(() => {
+                const btn = document.querySelector('.copy-btn');
+                btn.textContent = 'Copied!';
+                setTimeout(() => btn.textContent = 'Copy', 2000);
+            });
+        }
+    </script>
 </body>
 </html>
-

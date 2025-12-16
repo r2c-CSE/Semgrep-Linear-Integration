@@ -6,11 +6,11 @@ Automatically create Linear tickets from Semgrep Pro security findings. This con
 
 - 🎯 **Automatic ticket creation** from Semgrep findings
 - 🧙 **Setup Wizard** - beautiful GUI for easy configuration
+- 🚇 **Auto-tunnel for local dev** - ngrok integration for local testing
 - 🔐 **Webhook signature verification** for security
 - 📊 **Severity-based prioritization** (Critical/High → Urgent, Medium → High, etc.)
 - 🔄 **Duplicate detection** prevents creating multiple tickets for the same finding
 - 🌐 **Status dashboard** for monitoring
-- 🐳 **Fully containerized** for simple deployment
 
 ## 🚀 Quick Start
 
@@ -23,13 +23,19 @@ cd semgrep-linear-integration
 
 ### 2. Start the Application
 
+**For Local Development/Testing:**
 ```bash
-# Using Docker Compose (recommended)
-docker-compose up -d
+# Set your ngrok auth token (get free token at https://dashboard.ngrok.com)
+export NGROK_AUTHTOKEN=your_ngrok_token_here
+export LOCAL_DEV=true
 
-# Or build and run manually
-docker build -t semgrep-linear .
-docker run -d -p 8080:8080 semgrep-linear
+# Start with Docker Compose
+docker-compose up -d
+```
+
+**For Production:**
+```bash
+docker-compose up -d
 ```
 
 ### 3. Run the Setup Wizard
@@ -47,101 +53,170 @@ The setup wizard will guide you through:
 
 ### 4. Configure Semgrep Webhook
 
-After completing the wizard, you'll see instructions to:
+After completing the wizard:
 1. Go to **Semgrep AppSec Platform** → **Settings** → **Integrations**
 2. Click **Add** → Select **Webhook**
-3. Enter your server URL + `/webhook`
+3. Enter your webhook URL (shown in the dashboard - use the ngrok URL for local testing)
 4. Set the Signature Secret (shown in wizard)
-5. Enable notifications in **Rules** → **Policies** → **Rule Modes**
+5. Click **Subscribe**
+
+### 5. Enable Notifications for Rule Modes
+
+1. Go to **Rules** → **Policies** → **Rule Modes**
+2. Click on a rule mode (e.g., "Block", "Comment", "Monitor")
+3. Enable **Webhook notifications** for that mode
+4. Repeat for each rule mode you want to trigger Linear tickets
 
 ---
 
-## 🖥️ Hosting Options
+## 📋 How to Create Linear Tickets via Semgrep
 
-This application needs to be hosted on a server that can receive webhooks from Semgrep. Here are your options:
+Once the integration is configured, Linear tickets are created automatically when Semgrep finds security issues. Here's how it works:
 
-### Option 1: Railway (Recommended - Free Tier Available)
+### Method 1: CI/CD Scan (Automatic)
 
-Railway offers the simplest deployment with a free tier:
+When Semgrep runs in your CI/CD pipeline and finds issues:
+
+1. **Push code to your repository** that Semgrep is monitoring
+2. **Semgrep automatically scans** the code during CI/CD
+3. **If findings match your policy**, Semgrep sends a webhook
+4. **This integration receives the webhook** and creates a Linear ticket
+
+```yaml
+# Example: GitHub Actions with Semgrep
+name: Semgrep
+on: [push, pull_request]
+jobs:
+  semgrep:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: semgrep/semgrep-action@v1
+        with:
+          publishToken: ${{ secrets.SEMGREP_APP_TOKEN }}
+```
+
+### Method 2: Manual Scan via CLI
+
+Trigger a scan manually and findings will create tickets:
 
 ```bash
-# Install Railway CLI
-npm install -g @railway/cli
+# Login to Semgrep
+semgrep login
 
-# Login and deploy
+# Run a scan that reports to Semgrep Cloud
+semgrep ci
+```
+
+### Method 3: Semgrep Cloud Dashboard
+
+1. Go to **Semgrep AppSec Platform** → **Projects**
+2. Select a project and click **Scan Now**
+3. Any findings that match your webhook-enabled policies will create tickets
+
+### What Triggers a Ticket?
+
+Tickets are created when:
+- ✅ A **new finding** is detected (not already seen)
+- ✅ The finding's **rule mode** has webhook notifications enabled
+- ✅ The finding **severity** matches your configured policies
+
+Tickets are **NOT** created when:
+- ❌ The same finding already exists (duplicate detection)
+- ❌ The rule mode doesn't have webhooks enabled
+- ❌ The finding was marked as ignored/false positive in Semgrep
+
+### Example: Testing the Integration
+
+1. **Create a test file** with a known vulnerability:
+
+```python
+# test_vuln.py - SQL Injection example
+import sqlite3
+
+def get_user(user_id):
+    conn = sqlite3.connect('users.db')
+    # Vulnerable to SQL injection!
+    query = f"SELECT * FROM users WHERE id = {user_id}"
+    return conn.execute(query).fetchone()
+```
+
+2. **Commit and push** to a monitored repository
+3. **Watch the scan** in Semgrep Dashboard
+4. **Check Linear** for the new ticket!
+
+### Ticket Format
+
+Created tickets include:
+- **Title:** `[Semgrep] SEVERITY: Rule Name in repo-name`
+- **Priority:** Based on severity (Critical/High → Urgent, Medium → High, Low → Medium)
+- **Description:**
+  - Finding ID and rule information
+  - File location with line numbers
+  - Code snippet showing the issue
+  - Link to view in repository
+  - Remediation guidance
+
+---
+
+## 🖥️ Local Development with Auto-Tunnel
+
+For local testing, the app can automatically create an ngrok tunnel:
+
+### Setup
+
+1. **Get a free ngrok token** at https://dashboard.ngrok.com/get-started/your-authtoken
+
+2. **Configure environment variables:**
+```bash
+export NGROK_AUTHTOKEN=your_token_here
+export LOCAL_DEV=true
+```
+
+3. **Start the application:**
+```bash
+docker-compose up -d
+```
+
+4. **Check the dashboard** at http://localhost:8080 - your public ngrok URL will be displayed!
+
+The tunnel URL (e.g., `https://abc123.ngrok-free.app/webhook`) can be used directly in Semgrep's webhook configuration.
+
+---
+
+## 🌐 Production Hosting Options
+
+For production, deploy to a cloud service with HTTPS:
+
+### Railway (Recommended - Free Tier)
+```bash
+npm install -g @railway/cli
 railway login
 railway init
 railway up
 ```
 
-Or connect your GitHub repo directly at [railway.app](https://railway.app)
+### Render (Free Tier)
+1. Connect your GitHub repo at [render.com](https://render.com)
+2. Select **Docker** environment
+3. Add environment variables
 
-### Option 2: Render (Free Tier Available)
-
-1. Go to [render.com](https://render.com) and sign up
-2. Click **New** → **Web Service**
-3. Connect your GitHub repository
-4. Configure:
-   - **Environment:** Docker
-   - **Plan:** Free (or Starter for always-on)
-5. Add environment variables in the dashboard
-
-### Option 3: Fly.io (Free Tier Available)
-
+### Fly.io (Free Tier)
 ```bash
-# Install Fly CLI
 curl -L https://fly.io/install.sh | sh
-
-# Deploy
 fly auth login
 fly launch
 fly deploy
 ```
 
-### Option 4: Google Cloud Run (Pay-per-use)
-
+### Google Cloud Run
 ```bash
-# Build and push to Google Container Registry
 gcloud builds submit --tag gcr.io/PROJECT_ID/semgrep-linear
-
-# Deploy
 gcloud run deploy semgrep-linear \
   --image gcr.io/PROJECT_ID/semgrep-linear \
   --platform managed \
-  --allow-unauthenticated \
-  --set-env-vars "LINEAR_API_KEY=xxx,LINEAR_TEAM_ID=xxx"
+  --allow-unauthenticated
 ```
-
-### Option 5: DigitalOcean App Platform
-
-1. Go to [cloud.digitalocean.com/apps](https://cloud.digitalocean.com/apps)
-2. Click **Create App**
-3. Select your GitHub repository
-4. Choose **Dockerfile** as the build type
-5. Add environment variables
-6. Deploy
-
-### Option 6: Self-Hosted (VPS/Server)
-
-On any server with Docker:
-
-```bash
-# Clone the repository
-git clone https://github.com/johnpeterappsectesting/semgrep-linear-integration.git
-cd semgrep-linear-integration
-
-# Start with Docker Compose
-docker-compose up -d
-
-# Set up a reverse proxy (nginx example)
-# Point your domain to the server and configure SSL
-```
-
-### Important Notes for Hosting
-
-- **HTTPS Required**: Semgrep webhooks require HTTPS. Use a service with built-in SSL or set up a reverse proxy
-- **Public URL**: The webhook endpoint must be accessible from the internet
-- **Environment Variables**: Set credentials via environment variables, not the .env file in production
 
 ---
 
@@ -154,6 +229,8 @@ docker-compose up -d
 | `LINEAR_PROJECT_ID` | ❌ | Optional project to assign issues |
 | `LINEAR_DEFAULT_PRIORITY` | ❌ | Default priority 1-4 (default: 2) |
 | `SEMGREP_WEBHOOK_SECRET` | ❌ | Secret for webhook verification |
+| `LOCAL_DEV` | ❌ | Set to `true` to enable auto-tunnel |
+| `NGROK_AUTHTOKEN` | ❌ | ngrok auth token for local tunneling |
 | `PORT` | ❌ | Server port (default: 8080) |
 | `DEBUG` | ❌ | Enable debug logging (default: false) |
 
@@ -167,99 +244,41 @@ docker-compose up -d
 | `/webhook` | POST | Semgrep webhook receiver |
 | `/api/teams` | GET | List available Linear teams |
 | `/api/projects/<team_id>` | GET | List projects for a team |
-
-## 📝 Issue Format
-
-Created issues include:
-- **Title:** `[Semgrep] SEVERITY: Rule Name in repo-name`
-- **Description:** 
-  - Finding details and ID
-  - Rule information
-  - File location with line numbers
-  - Code snippet (if available)
-  - Link to code in repository
-  - Remediation guidance
+| `/api/tunnel/status` | GET | Check tunnel status |
+| `/api/tunnel/start` | POST | Manually start tunnel |
 
 ## 🔒 Security Considerations
 
-1. **Webhook Verification:** Set `SEMGREP_WEBHOOK_SECRET` to verify incoming requests
-2. **API Key Security:** Never commit `.env` files; use secrets management in production
-3. **Network Security:** Always deploy behind HTTPS
+1. **Webhook Verification:** Always set `SEMGREP_WEBHOOK_SECRET` in production
+2. **API Key Security:** Use environment variables or secrets management
+3. **HTTPS Required:** Deploy behind HTTPS for production
 4. **Non-root Container:** The container runs as a non-root user
-
-## 🏗️ Production Deployment Examples
-
-### Using Docker Compose with Traefik
-
-```yaml
-version: "3.8"
-services:
-  semgrep-linear:
-    build: .
-    environment:
-      - LINEAR_API_KEY=${LINEAR_API_KEY}
-      - LINEAR_TEAM_ID=${LINEAR_TEAM_ID}
-      - SEMGREP_WEBHOOK_SECRET=${SEMGREP_WEBHOOK_SECRET}
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.semgrep-linear.rule=Host(`semgrep-linear.example.com`)"
-      - "traefik.http.routers.semgrep-linear.tls.certresolver=letsencrypt"
-```
-
-### On Kubernetes
-
-```yaml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: semgrep-linear
-spec:
-  replicas: 2
-  selector:
-    matchLabels:
-      app: semgrep-linear
-  template:
-    metadata:
-      labels:
-        app: semgrep-linear
-    spec:
-      containers:
-      - name: app
-        image: semgrep-linear:latest
-        ports:
-        - containerPort: 8080
-        envFrom:
-        - secretRef:
-            name: semgrep-linear-secrets
-        livenessProbe:
-          httpGet:
-            path: /health
-            port: 8080
-        readinessProbe:
-          httpGet:
-            path: /health
-            port: 8080
-```
 
 ## 🐛 Troubleshooting
 
-### Issues not being created
+### Tickets not being created
 
-1. Check the logs: `docker-compose logs -f`
-2. Verify Linear connection at `http://localhost:8080`
-3. Ensure webhook is enabled in Semgrep
-4. Check that LINEAR_TEAM_ID is correct
+1. **Check the logs:** `docker-compose logs -f`
+2. **Verify webhook is enabled** in Semgrep for your rule modes
+3. **Check LINEAR_TEAM_ID** is correct (visible in dashboard)
+4. **Ensure findings are new** (duplicates are skipped)
 
-### Webhook signature errors
+### Webhook URL invalid error
+
+- For local testing, ensure `LOCAL_DEV=true` and `NGROK_AUTHTOKEN` are set
+- The ngrok tunnel URL will be shown in the dashboard
+- Use the full URL: `https://xxxx.ngrok-free.app/webhook`
+
+### Signature verification failed
 
 1. Ensure `SEMGREP_WEBHOOK_SECRET` matches Semgrep's configured secret
 2. Check for trailing whitespace in the secret
 
-### Connection refused
+### Connection issues
 
-1. Ensure your server is accessible from the internet
-2. Check firewall rules allow port 8080 (or your configured port)
-3. Verify HTTPS is properly configured
+1. Check your server is accessible from the internet
+2. Verify firewall rules allow port 8080
+3. For local dev, ensure ngrok tunnel is running
 
 ## 📄 License
 

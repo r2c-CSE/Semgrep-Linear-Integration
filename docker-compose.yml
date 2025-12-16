@@ -1,5 +1,3 @@
-version: "3.8"
-
 services:
   semgrep-linear:
     build: .
@@ -19,6 +17,10 @@ services:
       - SEMGREP_WEBHOOK_SECRET=${SEMGREP_WEBHOOK_SECRET:-}
       # Optional: Enable debug logging
       - DEBUG=${DEBUG:-false}
+      # Local Development: Set to 'true' to auto-start ngrok tunnel
+      - LOCAL_DEV=${LOCAL_DEV:-false}
+      # Local Development: ngrok auth token (get free at https://dashboard.ngrok.com)
+      - NGROK_AUTHTOKEN=${NGROK_AUTHTOKEN:-}
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/health')"]
@@ -29,4 +31,3 @@ services:
     labels:
       - "app.name=semgrep-linear-integration"
       - "app.description=Semgrep to Linear ticket integration"
-
