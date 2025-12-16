@@ -38,23 +38,60 @@ class WebhookHandler:
     def process_finding(self, finding: dict) -> Optional[dict]:
         """Process a Semgrep finding and create a Linear issue."""
         try:
-            # Extract finding details
-            finding_id = finding.get("id", "unknown")
-            rule_id = finding.get("rule", {}).get("id", "unknown-rule")
-            rule_name = finding.get("rule", {}).get("name", rule_id)
-            severity = finding.get("severity", "medium").lower()
-            message = finding.get("rule", {}).get("message", "No description available")
+            logger.info(f"Processing finding with keys: {list(finding.keys())}")
             
-            # Location info
+            # Extract finding details - handle multiple possible formats
+            # Format 1: Standard format with nested rule object
+            # Format 2: Flat format with check_id, path, etc.
+            
+            finding_id = (
+                finding.get("id") or 
+                finding.get("finding_id") or 
+                finding.get("check_id") or 
+                "unknown"
+            )
+            
+            # Rule info - try nested first, then flat
+            rule_obj = finding.get("rule", {})
+            if isinstance(rule_obj, dict):
+                rule_id = rule_obj.get("id", finding.get("check_id", "unknown-rule"))
+                rule_name = rule_obj.get("name", rule_id)
+                message = rule_obj.get("message", finding.get("extra", {}).get("message", "No description available"))
+            else:
+                rule_id = finding.get("check_id", str(rule_obj) if rule_obj else "unknown-rule")
+                rule_name = rule_id
+                message = finding.get("extra", {}).get("message", "No description available")
+            
+            # Severity - check multiple possible locations
+            severity = (
+                finding.get("severity") or
+                finding.get("extra", {}).get("severity") or
+                finding.get("metadata", {}).get("severity") or
+                "medium"
+            ).lower()
+            
+            # Location info - handle both nested and flat formats
             location = finding.get("location", {})
-            file_path = location.get("file_path", "unknown")
-            start_line = location.get("start_line", 0)
-            end_line = location.get("end_line", start_line)
+            if location:
+                file_path = location.get("file_path", location.get("path", "unknown"))
+                start_line = location.get("start_line", location.get("start", {}).get("line", 0))
+                end_line = location.get("end_line", location.get("end", {}).get("line", start_line))
+            else:
+                # Flat format
+                file_path = finding.get("path", "unknown")
+                start_line = finding.get("start", {}).get("line", finding.get("line", 0))
+                end_line = finding.get("end", {}).get("line", start_line)
             
-            # Repository info
-            repo = finding.get("repository", {})
-            repo_name = repo.get("name", "unknown-repo")
-            repo_url = repo.get("url", "")
+            # Repository info - try multiple locations
+            repo = finding.get("repository", finding.get("repo", {}))
+            if isinstance(repo, dict):
+                repo_name = repo.get("name", repo.get("repo_name", "unknown-repo"))
+                repo_url = repo.get("url", repo.get("repo_url", ""))
+            else:
+                repo_name = str(repo) if repo else "unknown-repo"
+                repo_url = ""
+            
+            logger.info(f"Extracted finding: id={finding_id}, rule={rule_id}, severity={severity}, file={file_path}")
             
             # Check for existing issue
             existing = self.linear_client.find_existing_issue(
@@ -121,8 +158,14 @@ class WebhookHandler:
     ) -> str:
         """Build a formatted issue description."""
         
-        # Get code snippet if available
-        code_snippet = finding.get("syntactic_context", "")
+        # Get code snippet if available - check multiple possible locations
+        code_snippet = (
+            finding.get("syntactic_context", "") or
+            finding.get("extra", {}).get("lines", "") or
+            finding.get("extra", {}).get("code", "") or
+            finding.get("match", "") or
+            ""
+        )
         
         # Build link to code if URL available
         code_link = ""

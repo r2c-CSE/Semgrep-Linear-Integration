@@ -119,8 +119,10 @@ def webhook():
         
         results = []
         
-        # Log the payload structure for debugging
+        # Log the full payload structure for debugging
         logger.info(f"Received webhook payload type: {type(payload).__name__}")
+        logger.info(f"Webhook payload keys: {payload.keys() if isinstance(payload, dict) else 'N/A (list)'}")
+        logger.debug(f"Full webhook payload: {payload}")
         
         # Handle array of findings (Semgrep sends findings as a list)
         if isinstance(payload, list):
@@ -152,14 +154,37 @@ def webhook():
                 result = webhook_handler.process_finding(finding)
                 results.append(result)
         
+        elif "findings" in payload:
+            # Handle payload with 'findings' array (common Semgrep format)
+            findings = payload.get("findings", [])
+            logger.info(f"Processing {len(findings)} findings from 'findings' array")
+            for finding in findings:
+                result = webhook_handler.process_finding(finding)
+                results.append(result)
+        
+        elif "data" in payload and isinstance(payload.get("data"), dict):
+            # Handle nested data structure
+            data = payload.get("data", {})
+            if "findings" in data:
+                findings = data.get("findings", [])
+                logger.info(f"Processing {len(findings)} findings from nested data.findings")
+                for finding in findings:
+                    result = webhook_handler.process_finding(finding)
+                    results.append(result)
+            else:
+                # Try to process data as a single finding
+                result = webhook_handler.process_finding(data)
+                results.append(result)
+        
         else:
             # Try to process as a finding directly
-            if "rule" in payload or "severity" in payload:
+            if "rule" in payload or "severity" in payload or "check_id" in payload or "path" in payload:
                 result = webhook_handler.process_finding(payload)
                 results.append(result)
             else:
                 logger.warning(f"Unknown event type: {event_type}")
-                return jsonify({"warning": f"Unknown event type: {event_type}"}), 200
+                logger.warning(f"Payload keys: {list(payload.keys())}")
+                return jsonify({"warning": f"Unknown event type: {event_type}", "keys": list(payload.keys())}), 200
         
         return jsonify({
             "status": "success",
