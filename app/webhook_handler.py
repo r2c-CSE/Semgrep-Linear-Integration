@@ -16,6 +16,9 @@ class WebhookHandler:
     
     def verify_signature(self, payload: bytes, signature: str) -> bool:
         """Verify the Semgrep webhook signature."""
+        # Reload config to get latest values from .env file
+        config.reload()
+        
         if not config.SEMGREP_WEBHOOK_SECRET:
             logger.warning("No webhook secret configured - skipping signature verification")
             return True
