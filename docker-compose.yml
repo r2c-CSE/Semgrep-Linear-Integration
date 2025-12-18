@@ -5,7 +5,7 @@ services:
     ports:
       - "${PORT:-8080}:8080"
     environment:
-      # Required: Your Linear API key
+      # Required: Your Linear API key (starts with lin_api_)
       - LINEAR_API_KEY=${LINEAR_API_KEY}
       # Required: The Linear team ID to create issues in
       - LINEAR_TEAM_ID=${LINEAR_TEAM_ID}
@@ -13,10 +13,14 @@ services:
       - LINEAR_PROJECT_ID=${LINEAR_PROJECT_ID:-}
       # Optional: Default priority (1=Urgent, 2=High, 3=Medium, 4=Low)
       - LINEAR_DEFAULT_PRIORITY=${LINEAR_DEFAULT_PRIORITY:-2}
-      # Optional: Semgrep webhook signature secret for verification
+      
+      # Semgrep webhook signature secret (recommended for production)
       - SEMGREP_WEBHOOK_SECRET=${SEMGREP_WEBHOOK_SECRET:-}
-      # Optional: Enable debug logging
+      
+      # Application Settings
       - DEBUG=${DEBUG:-false}
+      - PORT=8080
+      
       # Local Development: Set to 'true' to auto-start ngrok tunnel
       - LOCAL_DEV=${LOCAL_DEV:-false}
       # Local Development: ngrok auth token (get free at https://dashboard.ngrok.com)

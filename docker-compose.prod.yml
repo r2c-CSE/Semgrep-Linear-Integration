@@ -1,0 +1,112 @@
+# Production Docker Compose Configuration
+# 
+# Usage:
+#   docker-compose -f docker-compose.prod.yml up -d
+#
+# This configuration enforces production best practices:
+# - Webhook signature verification required
+# - Dashboard authentication required
+# - JSON logging enabled
+# - Activity log persistence
+# - Rate limiting enabled
+# - No local development features
+
+services:
+  semgrep-linear:
+    build: .
+    container_name: semgrep-linear-production
+    ports:
+      - "${PORT:-8080}:8080"
+    environment:
+      # ==========================================
+      # REQUIRED CONFIGURATION
+      # ==========================================
+      
+      # Linear API key (starts with lin_api_)
+      - LINEAR_API_KEY=${LINEAR_API_KEY:?LINEAR_API_KEY is required}
+      # Linear team ID to create issues in
+      - LINEAR_TEAM_ID=${LINEAR_TEAM_ID:?LINEAR_TEAM_ID is required}
+      # Semgrep webhook signature secret (required in production)
+      - SEMGREP_WEBHOOK_SECRET=${SEMGREP_WEBHOOK_SECRET:?SEMGREP_WEBHOOK_SECRET is required for production}
+      
+      # ==========================================
+      # AUTHENTICATION (at least one required)
+      # ==========================================
+      
+      # Option 1: API Key authentication (recommended for automation)
+      - DASHBOARD_API_KEY=${DASHBOARD_API_KEY:-}
+      
+      # Option 2: Basic Auth (for browser access)
+      - DASHBOARD_USERNAME=${DASHBOARD_USERNAME:-}
+      - DASHBOARD_PASSWORD=${DASHBOARD_PASSWORD:-}
+      
+      # ==========================================
+      # OPTIONAL CONFIGURATION
+      # ==========================================
+      
+      # Linear project ID (optional - issues will be unassigned if not set)
+      - LINEAR_PROJECT_ID=${LINEAR_PROJECT_ID:-}
+      # Default priority: 1=Urgent, 2=High, 3=Medium, 4=Low
+      - LINEAR_DEFAULT_PRIORITY=${LINEAR_DEFAULT_PRIORITY:-2}
+      
+      # ==========================================
+      # PRODUCTION SETTINGS
+      # ==========================================
+      
+      - PRODUCTION=true
+      - DEBUG=false
+      - PORT=8080
+      
+      # Logging (JSON format for log aggregation)
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - LOG_FORMAT=json
+      - LOG_FILE=/app/logs/app.log
+      
+      # Activity log persistence
+      - ACTIVITY_LOG_FILE=/app/logs/activity.log
+      - ACTIVITY_LOG_MAX_SIZE_MB=50
+      
+      # Rate limiting
+      - RATE_LIMIT_PER_MINUTE=${RATE_LIMIT_PER_MINUTE:-60}
+      - RATE_LIMIT_BURST=${RATE_LIMIT_BURST:-10}
+      
+      # Linear API settings
+      - LINEAR_API_TIMEOUT=30
+      - LINEAR_API_RETRIES=3
+      - LINEAR_API_RETRY_DELAY=1.0
+      
+      # Webhook settings
+      - WEBHOOK_MAX_PAYLOAD_SIZE_KB=1024
+      
+      # Disable local development features
+      - LOCAL_DEV=false
+      - NGROK_AUTHTOKEN=
+      
+    volumes:
+      # Persist logs
+      - ./logs:/app/logs
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/ready')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    labels:
+      - "app.name=semgrep-linear-integration"
+      - "app.description=Semgrep to Linear ticket integration (Production)"
+      - "app.environment=production"
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
