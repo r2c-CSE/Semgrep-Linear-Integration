@@ -103,6 +103,14 @@ def health():
 @app.route("/webhook", methods=["POST"])
 def webhook():
     """Main webhook endpoint for Semgrep events."""
+    global linear_client, webhook_handler
+    
+    # Reload config and reinitialize if needed (handles multi-worker scenarios)
+    config.reload()
+    if config.LINEAR_API_KEY and not webhook_handler:
+        linear_client = LinearClient(config.LINEAR_API_KEY)
+        webhook_handler = WebhookHandler(linear_client)
+    
     if not webhook_handler:
         return jsonify({"error": "Integration not configured"}), 503
     
