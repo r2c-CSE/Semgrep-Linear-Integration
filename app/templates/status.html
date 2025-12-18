@@ -124,6 +124,44 @@
             font-size: 0.8rem; font-weight: 500; margin-left: 0.5rem;
         }
         .copy-btn:hover { opacity: 0.9; }
+        
+        /* Activity Log Styles */
+        .activity-stats {
+            display: flex; gap: 1rem; margin-bottom: 1rem; flex-wrap: wrap;
+        }
+        .stat-box {
+            background: var(--bg-tertiary); padding: 0.75rem 1rem; border-radius: 8px;
+            display: flex; flex-direction: column; min-width: 80px;
+        }
+        .stat-value { font-size: 1.5rem; font-weight: 700; color: var(--accent-primary); }
+        .stat-value.success { color: var(--accent-green); }
+        .stat-value.error { color: var(--accent-red); }
+        .stat-label { font-size: 0.75rem; color: var(--text-secondary); text-transform: uppercase; }
+        
+        .activity-log { max-height: 400px; overflow-y: auto; }
+        .activity-loading { color: var(--text-secondary); padding: 1rem; text-align: center; }
+        .activity-empty { color: var(--text-secondary); padding: 2rem; text-align: center; }
+        
+        .activity-item {
+            display: flex; gap: 0.75rem; padding: 0.75rem; border-radius: 8px;
+            margin-bottom: 0.5rem; background: var(--bg-tertiary); align-items: flex-start;
+        }
+        .activity-item:hover { background: var(--bg-primary); }
+        
+        .activity-icon {
+            width: 32px; height: 32px; border-radius: 8px; display: flex;
+            align-items: center; justify-content: center; font-size: 1rem; flex-shrink: 0;
+        }
+        .activity-icon.success { background: rgba(63, 185, 80, 0.2); }
+        .activity-icon.error { background: rgba(248, 81, 73, 0.2); }
+        .activity-icon.warning { background: rgba(210, 153, 34, 0.2); }
+        .activity-icon.info { background: rgba(88, 166, 255, 0.2); }
+        
+        .activity-content { flex: 1; min-width: 0; }
+        .activity-message { font-weight: 500; margin-bottom: 0.25rem; word-break: break-word; }
+        .activity-details { font-size: 0.8rem; color: var(--text-secondary); font-family: 'JetBrains Mono', monospace; }
+        .activity-details code { background: var(--bg-primary); padding: 0.1rem 0.3rem; border-radius: 3px; }
+        .activity-time { font-size: 0.75rem; color: var(--text-secondary); white-space: nowrap; }
     </style>
 </head>
 <body>
@@ -241,6 +279,18 @@
         </div>
         {% endif %}
         
+        <!-- Activity Log -->
+        <div class="card">
+            <div class="card-header">
+                <h2>📊 Activity Log</h2>
+                <button class="copy-btn" onclick="refreshActivities()" style="margin-left: auto;">↻ Refresh</button>
+            </div>
+            <div id="activity-stats" class="activity-stats"></div>
+            <div id="activity-log" class="activity-log">
+                <div class="activity-loading">Loading activities...</div>
+            </div>
+        </div>
+        
         <footer>
             Built for security teams • 
             <a href="/setup">Setup Wizard</a> • 
@@ -258,6 +308,98 @@
                 setTimeout(() => btn.textContent = 'Copy', 2000);
             });
         }
+        
+        function getIcon(type, status) {
+            const icons = {
+                'issue_created': '✅',
+                'issue_skipped': '⏭️',
+                'issue_failed': '❌',
+                'webhook_received': '📥',
+                'error': '🚨',
+                'default': '📋'
+            };
+            return icons[type] || icons['default'];
+        }
+        
+        function formatTime(isoString) {
+            const date = new Date(isoString);
+            const now = new Date();
+            const diff = (now - date) / 1000;
+            
+            if (diff < 60) return 'just now';
+            if (diff < 3600) return Math.floor(diff / 60) + 'm ago';
+            if (diff < 86400) return Math.floor(diff / 3600) + 'h ago';
+            return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+        }
+        
+        function renderActivity(item) {
+            const details = item.details || {};
+            let detailsHtml = '';
+            
+            if (details.issue_id) {
+                detailsHtml = `<code>${details.issue_id}</code>`;
+                if (details.file) detailsHtml += ` • ${details.file}`;
+                if (details.severity) detailsHtml += ` • ${details.severity}`;
+            } else if (details.file) {
+                detailsHtml = `<code>${details.file}</code>`;
+                if (details.rule) detailsHtml += ` • ${details.rule.split('.').pop()}`;
+            } else if (details.error) {
+                detailsHtml = details.error.substring(0, 100);
+            }
+            
+            return `
+                <div class="activity-item">
+                    <div class="activity-icon ${item.status}">${getIcon(item.type, item.status)}</div>
+                    <div class="activity-content">
+                        <div class="activity-message">${item.message}</div>
+                        ${detailsHtml ? `<div class="activity-details">${detailsHtml}</div>` : ''}
+                    </div>
+                    <div class="activity-time">${formatTime(item.timestamp)}</div>
+                </div>
+            `;
+        }
+        
+        async function refreshActivities() {
+            const logEl = document.getElementById('activity-log');
+            const statsEl = document.getElementById('activity-stats');
+            
+            try {
+                const response = await fetch('/api/activities?limit=50');
+                const data = await response.json();
+                
+                // Render stats
+                const stats = data.stats;
+                statsEl.innerHTML = `
+                    <div class="stat-box">
+                        <div class="stat-value">${stats.total}</div>
+                        <div class="stat-label">Total</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-value success">${stats.success}</div>
+                        <div class="stat-label">Success</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-value error">${stats.errors}</div>
+                        <div class="stat-label">Errors</div>
+                    </div>
+                `;
+                
+                // Render activities
+                if (data.activities.length === 0) {
+                    logEl.innerHTML = '<div class="activity-empty">No activity yet. Trigger a Semgrep scan to see events here.</div>';
+                } else {
+                    logEl.innerHTML = data.activities.map(renderActivity).join('');
+                }
+            } catch (error) {
+                logEl.innerHTML = '<div class="activity-empty">Failed to load activities</div>';
+            }
+        }
+        
+        // Load activities on page load
+        refreshActivities();
+        
+        // Auto-refresh every 10 seconds
+        setInterval(refreshActivities, 10000);
     </script>
 </body>
 </html>

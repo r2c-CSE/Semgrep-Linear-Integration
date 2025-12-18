@@ -5,6 +5,7 @@ from .config import config
 from .linear_client import LinearClient
 from .webhook_handler import WebhookHandler
 from . import tunnel
+from . import activity
 
 # Configure logging
 logging.basicConfig(
@@ -24,6 +25,9 @@ if tunnel.is_local_development():
     public_url = tunnel.start_tunnel(config.PORT)
     if public_url:
         logger.info(f"✅ Local development mode - tunnel active")
+        activity.log_activity("startup", f"Server started with ngrok tunnel", {"public_url": public_url}, "success")
+    else:
+        activity.log_activity("startup", "Server started (tunnel not active)", {}, "warning")
     else:
         logger.warning("⚠️  Local dev mode enabled but tunnel failed to start. Set NGROK_AUTHTOKEN.")
 
@@ -106,6 +110,16 @@ def ping():
     return jsonify({"status": "ok", "message": "pong"}), 200
 
 
+@app.route("/api/activities", methods=["GET"])
+def get_activities():
+    """Get recent activity log."""
+    limit = request.args.get("limit", 50, type=int)
+    return jsonify({
+        "activities": activity.get_activities(limit),
+        "stats": activity.get_stats()
+    })
+
+
 @app.route("/test-webhook", methods=["GET", "POST"])
 def test_webhook():
     """Test endpoint that simulates a Semgrep webhook to verify the integration works."""
@@ -167,6 +181,7 @@ def webhook():
     
     # POST request - process webhook
     logger.info(f"Webhook POST request received from {request.remote_addr}")
+    activity.log_activity("webhook_received", f"Webhook received from {request.remote_addr}", {"method": "POST"}, "info")
     
     # Reload config and reinitialize if needed (handles multi-worker scenarios)
     config.reload()

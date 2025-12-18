@@ -4,6 +4,7 @@ import logging
 from typing import Optional
 from .config import config
 from .linear_client import LinearClient
+from . import activity
 
 logger = logging.getLogger(__name__)
 
@@ -30,6 +31,7 @@ class WebhookHandler:
         # Secret is configured, so signature is required
         if not signature:
             logger.error("No signature provided in request but secret is configured")
+            activity.log_activity("signature_missing", "No signature provided but secret is configured", {}, "error")
             return False
         
         expected_signature = hmac.new(
@@ -99,6 +101,12 @@ class WebhookHandler:
             
             if existing:
                 logger.info(f"Issue already exists for finding {finding_id}: {existing['identifier']}")
+                activity.log_activity(
+                    "issue_skipped",
+                    f"Issue already exists: {existing['identifier']}",
+                    {"finding_id": finding_id, "rule": rule_name, "file": file_path},
+                    "warning"
+                )
                 return {"status": "exists", "issue": existing}
             
             # Build issue title and description
@@ -132,13 +140,39 @@ class WebhookHandler:
             if result.get("success"):
                 issue = result.get("issue", {})
                 logger.info(f"Created Linear issue {issue.get('identifier')} for finding {finding_id}")
+                activity.log_activity(
+                    "issue_created",
+                    f"Created {issue.get('identifier')}: {rule_name}",
+                    {
+                        "issue_id": issue.get('identifier'),
+                        "issue_url": issue.get('url'),
+                        "finding_id": finding_id,
+                        "rule": rule_name,
+                        "severity": severity,
+                        "file": file_path,
+                        "repo": repo_name
+                    },
+                    "success"
+                )
                 return {"status": "created", "issue": issue}
             else:
                 logger.error(f"Failed to create issue for finding {finding_id}")
+                activity.log_activity(
+                    "issue_failed",
+                    f"Failed to create issue for {rule_name}",
+                    {"finding_id": finding_id, "rule": rule_name, "file": file_path},
+                    "error"
+                )
                 return {"status": "error", "message": "Failed to create issue"}
                 
         except Exception as e:
             logger.exception(f"Error processing finding: {e}")
+            activity.log_activity(
+                "error",
+                f"Error processing finding: {str(e)[:100]}",
+                {"error": str(e)},
+                "error"
+            )
             return {"status": "error", "message": str(e)}
     
     def _build_description(
@@ -222,6 +256,13 @@ Please review this finding and take appropriate action:
         findings_count = scan_data.get("findings_count", 0)
         
         logger.info(f"Scan {scan_id} completed with status {status}, {findings_count} findings")
+        
+        activity.log_activity(
+            "scan_completed",
+            f"Scan completed: {findings_count} findings",
+            {"scan_id": scan_id, "status": status, "findings_count": findings_count},
+            "info"
+        )
         
         return {
             "status": "processed",
