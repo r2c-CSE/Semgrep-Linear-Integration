@@ -335,48 +335,10 @@ def webhook():
         return jsonify({"error": "Integration not configured"}), 503
 
     # ============================================================
-    # Signature verification (SYSTEM CAVEAT: read RAW BODY FIRST)
+    # Parse JSON payload first (needed for signature verification)
     # ============================================================
-    # cache=True is CRITICAL so parsing later doesn't see an empty stream.
     raw_body: bytes = request.get_data(cache=True, as_text=False)
-
-    sig_header = request.headers.get("X-Semgrep-Signature-256", "") or ""
-    logger.info(f"sig_debug provided_raw='{sig_header}'")
-    logger.info(f"sig_debug payload_len={len(raw_body)} payload_preview={raw_body[:200]!r}")
-
-    secret_str = (getattr(config, "SEMGREP_WEBHOOK_SECRET", "") or "").strip()
-
-    if secret_str:
-        # Expect format: sha256=<hex>
-        if not sig_header.startswith("sha256="):
-            logger.warning("Invalid signature header format")
-            activity.log_activity("signature_invalid", "Invalid signature header format", {}, "error")
-            return jsonify({"error": "Invalid signature format"}), 401
-
-        provided_sig = sig_header[len("sha256="):].strip().lower()
-
-        expected_sig = hmac.new(
-            secret_str.encode("utf-8"),
-            raw_body,
-            hashlib.sha256
-        ).hexdigest().lower()
-
-        match = hmac.compare_digest(expected_sig, provided_sig)
-
-        logger.info(f"sig_debug provided_hash={provided_sig}")
-        logger.info(f"sig_debug expected={expected_sig}")
-        logger.info(f"sig_debug match={match}")
-
-        if not match:
-            logger.warning("Invalid webhook signature")
-            activity.log_activity("signature_invalid", "Invalid webhook signature", {}, "error")
-            return jsonify({"error": "Invalid signature"}), 401
-    else:
-        logger.info("Signature verification skipped: SEMGREP_WEBHOOK_SECRET not configured")
-
-    # ============================================================
-    # Option A: Parse JSON from the raw bytes we already verified
-    # ============================================================
+    
     if not raw_body:
         return jsonify({"error": "Empty payload"}), 400
 
@@ -386,6 +348,41 @@ def webhook():
         logger.warning(f"Invalid JSON: {e} raw_preview={raw_body[:200]!r}")
         activity.log_activity("webhook_error", "Invalid JSON payload", {}, "error")
         return jsonify({"error": "Invalid JSON"}), 400
+
+    # ============================================================
+    # Signature verification (per Semgrep docs)
+    # Semgrep computes signature on compact JSON: json.dumps(payload, separators=(',', ':'))
+    # ============================================================
+    provided_sig = request.headers.get("X-Semgrep-Signature-256", "") or ""
+    secret_str = (getattr(config, "SEMGREP_WEBHOOK_SECRET", "") or "").strip()
+
+    if secret_str:
+        # Re-serialize payload as compact JSON (no spaces) per Semgrep's method
+        payload_str = json.dumps(payload, separators=(',', ':'))
+        
+        computed_sig = hmac.new(
+            secret_str.encode("utf-8"),
+            payload_str.encode("utf-8"),
+            hashlib.sha256
+        ).hexdigest()
+
+        # Handle both formats: raw hex or "sha256=<hex>" prefix
+        if provided_sig.startswith("sha256="):
+            provided_sig = provided_sig[len("sha256="):]
+        provided_sig = provided_sig.strip().lower()
+        computed_sig = computed_sig.lower()
+
+        logger.info(f"sig_debug provided={provided_sig}")
+        logger.info(f"sig_debug computed={computed_sig}")
+
+        if not hmac.compare_digest(provided_sig, computed_sig):
+            logger.warning("Invalid webhook signature")
+            activity.log_activity("signature_invalid", "Invalid webhook signature", {}, "error")
+            return jsonify({"error": "Invalid signature"}), 401
+        
+        logger.info("Webhook signature verified successfully")
+    else:
+        logger.info("Signature verification skipped: SEMGREP_WEBHOOK_SECRET not configured")
 
     try:
         results = []
