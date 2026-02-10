@@ -2,6 +2,8 @@
 
 Automatically create Linear tickets from Semgrep Pro security findings. This containerized application receives webhooks from Semgrep and creates well-formatted issues in your Linear workspace.
 
+**Note**: This is an unofficial tool, provided as-is. If you have improvements to share, feel free to collaborate!
+
 ## ✨ Features
 
 - 🎯 **Automatic ticket creation** from Semgrep findings
