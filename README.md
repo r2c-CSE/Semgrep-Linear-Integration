@@ -20,7 +20,7 @@ Automatically create Linear tickets from Semgrep Pro security findings. This con
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/jpcataothrowaway/semgrep-linear-integration.git
+git clone https://github.com/r2c-cse/semgrep-linear-integration.git
 cd semgrep-linear-integration
 ```
 
